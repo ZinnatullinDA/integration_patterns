@@ -1,0 +1,92 @@
+name: integration-patterns-task2
+
+x-client: &client
+  init: true
+  restart: on-failure:3
+  stop_grace_period: 15s
+  depends_on:
+    rabbitmq:
+      condition: service_healthy
+
+x-env: &env
+  AMQP_URL: amqp://guest:guest@rabbitmq:5672?heartbeat=5
+
+x-ready: &ready
+  test: ["CMD", "node", "-e", "require('node:fs').accessSync('/tmp/ready')"]
+  interval: 1s
+  timeout: 3s
+  retries: 15
+  start_period: 5s
+
+services:
+  rabbitmq:
+    image: rabbitmq:3.13.7-management
+    container_name: rabbitmq-task2
+    hostname: rabbitmq-task2
+    environment:
+      RABBITMQ_NODENAME: rabbit@rabbitmq-task2
+      RABBITMQ_DEFAULT_USER: guest
+      RABBITMQ_DEFAULT_PASS: guest
+    ports:
+      - "127.0.0.1:5673:5672"
+      - "127.0.0.1:15673:15672"
+    volumes:
+      - rabbitmq_data:/var/lib/rabbitmq
+    healthcheck:
+      test: ["CMD", "rabbitmq-diagnostics", "-q", "check_running"]
+      interval: 5s
+      timeout: 5s
+      retries: 15
+      start_period: 15s
+    stop_grace_period: 30s
+
+  publisher:
+    <<: *client
+    container_name: task2-publisher
+    build:
+      context: .
+      dockerfile: publisher/Dockerfile
+    restart: "no"
+    environment:
+      <<: *env
+      SERVICE_NAME: publisher
+
+  accounting_subscriber:
+    <<: *client
+    container_name: task2-accounting
+    build:
+      context: .
+      dockerfile: subscriber/Dockerfile
+    environment:
+      <<: *env
+      SERVICE_NAME: accounting_subscriber
+      DEPARTMENT_NAME: Бухгалтерия
+    healthcheck: *ready
+
+  oil_depot_subscriber:
+    <<: *client
+    container_name: task2-oil-depot
+    build:
+      context: .
+      dockerfile: subscriber/Dockerfile
+    environment:
+      <<: *env
+      SERVICE_NAME: oil_depot_subscriber
+      DEPARTMENT_NAME: Нефтебаза
+    healthcheck: *ready
+
+  analytics_subscriber:
+    <<: *client
+    container_name: task2-analytics
+    build:
+      context: .
+      dockerfile: subscriber/Dockerfile
+    environment:
+      <<: *env
+      SERVICE_NAME: analytics_subscriber
+      DEPARTMENT_NAME: Аналитический_отдел
+    healthcheck: *ready
+
+volumes:
+  rabbitmq_data:
+

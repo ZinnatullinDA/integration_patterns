@@ -1,0 +1,16 @@
+{
+  "name": "task1-point-to-point-consumer",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "start": "node consumer.js"
+  },
+  "engines": {
+    "node": ">=22"
+  },
+  "dependencies": {
+    "amqplib": "0.10.9"
+  }
+}
+

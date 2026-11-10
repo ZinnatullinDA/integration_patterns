@@ -1,0 +1,16 @@
+{
+  "name": "task2-publish-subscribe-publisher",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "start": "node publisher.js"
+  },
+  "engines": {
+    "node": ">=22"
+  },
+  "dependencies": {
+    "amqplib": "0.10.9"
+  }
+}
+

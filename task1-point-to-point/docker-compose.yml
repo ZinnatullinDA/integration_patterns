@@ -1,0 +1,87 @@
+name: integration-patterns-task1
+
+x-client: &client
+  init: true
+  restart: on-failure:3
+  stop_grace_period: 15s
+  depends_on:
+    rabbitmq:
+      condition: service_healthy
+
+x-env: &env
+  AMQP_URL: amqp://guest:guest@rabbitmq:5672?heartbeat=5
+
+x-ready: &ready
+  test: ["CMD", "node", "-e", "require('node:fs').accessSync('/tmp/ready')"]
+  interval: 1s
+  timeout: 3s
+  retries: 15
+  start_period: 5s
+
+services:
+  rabbitmq:
+    image: rabbitmq:3.13.7-management
+    container_name: rabbitmq-task1
+    hostname: rabbitmq-task1
+    environment:
+      RABBITMQ_NODENAME: rabbit@rabbitmq-task1
+      RABBITMQ_DEFAULT_USER: guest
+      RABBITMQ_DEFAULT_PASS: guest
+    ports:
+      - "127.0.0.1:5672:5672"
+      - "127.0.0.1:15672:15672"
+    volumes:
+      - rabbitmq_data:/var/lib/rabbitmq
+    healthcheck:
+      test: ["CMD", "rabbitmq-diagnostics", "-q", "check_running"]
+      interval: 5s
+      timeout: 5s
+      retries: 15
+      start_period: 15s
+    stop_grace_period: 30s
+
+  producer:
+    <<: *client
+    container_name: task1-producer
+    build:
+      context: .
+      dockerfile: producer/Dockerfile
+    restart: "no"
+    environment:
+      <<: *env
+      SERVICE_NAME: producer
+    depends_on:
+      rabbitmq:
+        condition: service_healthy
+      consumer1:
+        condition: service_healthy
+      consumer2:
+        condition: service_healthy
+
+  consumer1:
+    <<: *client
+    container_name: task1-consumer1
+    build:
+      context: .
+      dockerfile: consumer/Dockerfile
+    environment:
+      <<: *env
+      SERVICE_NAME: consumer1
+      BRIGADE_NAME: Бригада-1
+    healthcheck: *ready
+
+  consumer2:
+    <<: *client
+    container_name: task1-consumer2
+    build:
+      context: .
+      dockerfile: consumer/Dockerfile
+    environment:
+      <<: *env
+      SERVICE_NAME: consumer2
+      BRIGADE_NAME: Бригада-2
+    healthcheck: *ready
+
+volumes:
+  rabbitmq_data:
+
