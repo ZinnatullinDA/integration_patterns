@@ -1,0 +1,71 @@
+name: practice-2
+
+x-app: &app
+  build: .
+  restart: unless-stopped
+  environment: &env
+    RABBITMQ_HOST: rabbitmq
+  depends_on:
+    rabbitmq:
+      condition: service_healthy
+
+services:
+  rabbitmq:
+    image: rabbitmq:3-management
+    hostname: rabbitmq
+    ports:
+      - "5672:5672"
+      - "15672:15672"
+    environment:
+      RABBITMQ_DEFAULT_USER: guest
+      RABBITMQ_DEFAULT_PASS: guest
+    volumes:
+      - rabbitmq-data:/var/lib/rabbitmq
+    healthcheck:
+      test: ["CMD", "rabbitmq-diagnostics", "-q", "check_running"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+    restart: unless-stopped
+  client:
+    <<: *app
+    command: python -m client.main
+    environment:
+      <<: *env
+      CLIENT_LOG_LEVEL: ${CLIENT_LOG_LEVEL:-INFO}
+    volumes:
+      - client-data:/data
+  processor:
+    <<: *app
+    command: python -m processor.main
+  drilling:
+    <<: *app
+    command: python -m drilling.main
+    environment:
+      <<: *env
+      DRILLING_DELAY_SEC: ${DRILLING_DELAY_SEC:-4}
+  electrical:
+    <<: *app
+    command: python -m electrical.main
+    environment:
+      <<: *env
+      ELECTRICAL_DELAY_SEC: ${ELECTRICAL_DELAY_SEC:-2}
+  logistics:
+    <<: *app
+    command: python -m logistics.main
+    environment:
+      <<: *env
+      LOGISTICS_DELAY_SEC: ${LOGISTICS_DELAY_SEC:-1}
+  aggregator:
+    <<: *app
+    command: python -m aggregator.main
+    environment:
+      <<: *env
+      AGGREGATION_TIMEOUT_SEC: ${AGGREGATION_TIMEOUT_SEC:-30}
+    volumes:
+      - aggregator-data:/data
+
+volumes:
+  rabbitmq-data:
+  aggregator-data:
+  client-data:
